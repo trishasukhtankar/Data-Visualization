@@ -1,0 +1,97 @@
+---
+title: "Assignment 1"
+author: "Trisha Sukhtankar"
+date: "25/01/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing the data
+
+
+
+```{r data}
+
+data <- read.csv("D:/Assignments/Sem 2/Data Visualization/week2_data_4cat(1).csv") #importing data
+str(data) #Having a look at the type of variables, data container, number of variables and observations
+
+```
+```{r }
+head(data) #displays the first few rows of the data for better analysis
+```
+
+## Part 1: Plotting the data
+
+The first step for plotting the graph is to import ggplot2 (we could have achieved the same result using tidyverse package as well since ggplot2 is a part of tidyverse package). Upon having look, we can tell that 'country' is a factor and 'var_a', 'var_b' are merely values corresponding to the factor variable. The following is a basic scatterplot of the given dataset: 
+
+```{r basic plot}
+library(ggplot2)
+
+plot <- ggplot(data = data, aes(x = var_a, y = var_b)) +
+                 geom_point() #adding geom layer and defining the type of plot
+plot
+```
+
+In the above plot, a lot of data points are overlapping each other. Therefore, it is difficult to interpret the data from the above plot. Now, in order to make the datapoints clearly visible and distinguishable, we shall add custom color scheme based on the factors, reshape the points, adjust alpha values (to define opacity of each point based on'Country') and customize a suitable background to the plot.
+
+```{r plot customisation}
+plot <- ggplot(data = data, aes(x = var_a, y = var_b, colour = country, alpha = country, shape = country)) +
+                geom_point(size = 2.5) +
+  
+                scale_alpha_manual(values = c(0.8, 0.6, 0.9, 0.7)) + #setting opacity of data points
+  
+                scale_colour_manual(values = c("green4", "blue", "red", "orange"), name = "Country", labels = c("England", "Ireland", "Scotland", "Wales"))+ #setting colours for each country
+  
+                scale_shape_manual(values = c(21, 22, 25, 23)) + #setting shape as per the country
+  
+                ggtitle("Comparing performance of Ireland and the countries in UK with each other") +
+  
+                xlab("a values") + #new label for x axis
+                ylab("b values") + #new label for y axis
+  
+                scale_x_continuous(breaks = c(4,6,8,10,12,14,16,18,20))+
+                
+                theme_bw()+
+                theme(axis.title = element_text(size = 10),
+                      axis.text = element_text(size = 8),
+                      panel.background = element_rect(fill = "white"),
+                      panel.grid.major = element_line(size = 0.25, linetype = 'solid', colour = "lightgrey"),
+                      panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "lightgrey"))
+  
+  
+plot
+```
+
+## Part 2 : Calculating mean and standard deviation
+
+Calculating mean and standard deviation of var_a and var_b when grouped by their country and the correlation between the 2 variables:
+
+```{r}
+
+library(dplyr)
+data_stats <- data %>%
+  group_by(country) %>%
+  summarise(cor_ab = cor(var_a, var_b), mean_a = mean(var_a), mean_b = mean(var_b), st_a = sd(var_a), st_b = sd(var_b))
+data_stats
+
+```
+
+## Formatting the table
+
+We are using *kableExtra* package to format our tables. Here, **kable_styling()** enables the styling of a basic, crude-looking table and transforms into more readable and asthetically better format. The *bootstrap_options* lets us control the format into twitter-like tables by enabling us to use the various predefined classes such as 'striped', 'hover' etc.
+
+```{r table}
+library(knitr)
+library(kableExtra)
+
+
+kable(data) %>%
+  kable_styling(bootstrap_options = "striped") %>%
+  scroll_box()
+
+```
