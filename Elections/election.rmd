@@ -1,0 +1,473 @@
+---
+title: "Irish election 2016 and 2020 study"
+output:
+  pdf_document:
+    df_print: kable
+    number_sections: yes
+    toc: yes
+  word_document:
+    toc: yes
+header-includes: \usepackage{float} \floatplacement{figure}{H} \floatplacement{table}{H}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+\pagebreak
+# Introduction
+This report presents a study of the Irish election 2020 for the region Galway West and it's comparison with 2016 elections for the same region. It summarizes:  
+- The vote per party in each election.  
+- The change in votes per party from 2016-2020  
+- A comparison to the national average for party share of the vote  
+- The change in vote for the most significant candidates in both elections 
+
+```{r}
+#Load all the relevant libraries
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(tidyverse)
+library(scales)
+library(ggthemes)
+library(stringr)
+library(gridExtra)
+library(colorblindr)
+
+
+
+#Load data for 2016 elections
+data2016 <-
+  read.csv(
+    "./GW-election2016-2020/2016-04-28_general-election-count-details-galway-west-csv_en.csv",
+    fileEncoding = "UTF-8-BOM"
+  )
+#Load data for 2020 elections
+data2020 <-
+  read.csv("./GW-election2016-2020/2020Election.csv", fileEncoding = "UTF-8-BOM")
+```
+
+
+# Votes per party  
+
+Figure 1 gives us insights about the number of votes per party in the 2016 and 2020 Irish General election for Galway-west constituency.
+
+```{r}
+#DATA CLEANING -2016 data
+#Join the first and surname to get the Candidate name
+data2016$Candidate <-
+  paste(data2016$Candidate.First.Name,
+        " ",
+        data2016$Candidate.surname)
+#Remove any whtespaces in the party and candidate names
+data2016$Party <- as.factor(str_squish(data2016$Party))
+data2016$Candidate <- as.factor(str_squish(data2016$Candidate))
+#Get the summation of votes per candidate
+cleaned_2016_data <-
+  data2016 %>% group_by(Party, Candidate) %>% summarize(total_votes = first(Votes))
+#Get the summation of votes per party
+data_2016_per_party <-
+  cleaned_2016_data %>% group_by(Party) %>% summarize(votes_per_party =
+                                                        sum(total_votes))
+```
+
+
+```{r}
+#DATA CLEANING -2020 data
+#Remove any "," in the First preferential vote column
+data2020$total_votes <- as.numeric(gsub(",", "", data2020$Count.1))
+#Remove any whtespaces in the party and candidate names
+data2020$Party <- as.factor(str_squish(data2020$Party))
+data2020$Candidate <- as.factor(str_squish(data2020$Candidate))
+#Drop the Count.1 column
+cleaned_2020_data <- data2020[-3]
+#Get the summation of votes per party
+data_2020_per_party <-
+  cleaned_2020_data %>% group_by(Party) %>% summarize(votes_per_party = sum(total_votes))
+```
+
+```{r}
+#Change labels of those parties that have been named differently in 2016 data 
+levels(data_2016_per_party$Party)[levels(data_2016_per_party$Party) == "Ind"] <-
+  "Independent"
+#Remove encoding of party labels in 2020 data
+levels(data_2020_per_party$Party)[levels(data_2020_per_party$Party) == "Fianna Fáil"] <-
+  "Fianna Fail"
+levels(data_2020_per_party$Party)[levels(data_2020_per_party$Party) == "Sinn Féin"] <-
+  "Sinn Fein"
+
+
+#Overall use of politically sensitive colour scheme
+party.colours <-
+  c(
+    'Fine Gael' = '#1f78b4',
+    'Fianna Fail' = '#33a02c',
+    'Sinn Fein' = 'darkolivegreen',
+    'Labour Party' = '#e31a1c',
+    'Green Party' = '#b2df8a',
+    'Social Democrats' = '#cab2d6',
+    'Independent' = 'darkred',
+    'Renua' = '#ff7f00',
+    'Direct Democracy Ireland' = 'darkgrey',
+    "Solidarity–PBP" = '#fdbf6f',
+    "Aontu" = '#fb9a99',
+    "Social Democratic Party" = '#cab2d6',
+    "AAA" = '#fdbf6f'
+  )
+```
+
+
+```{r, fig.cap="Number of votes per party"}
+#Function that returns a bar chart based on the party colour that it belongs to
+plot_graph <- function(data, title) {
+  #Set the theme as classic
+  theme_set(theme_classic())
+  #Plot a graph that takes in data and title as parameters and returns a bar chart
+  ggplot(data, (aes(
+    x = reorder(Party, votes_per_party) ,
+    y = votes_per_party,
+    fill = reorder(Party, votes_per_party)
+  ))) + geom_col(width = 0.8) +
+    scale_fill_manual(values = party.colours) +
+    ggtitle(title) +
+    coord_flip(clip = "off") +
+    theme(
+      axis.title = element_blank(),
+      axis.line.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.line.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x.bottom =  element_blank(),
+      legend.position = "none",
+      plot.title = element_text(size = 11),
+      plot.margin = margin(3, 6, 3, 3),
+      panel.background = element_blank(),
+      panel.grid.major.x = element_line(
+        size = 0.4,
+        linetype = 'solid',
+        colour = "white"
+      ),
+      panel.ontop = TRUE
+    )
+}
+#Plot 1 of data 2016 for votes per party
+plot1 <- plot_graph(data_2016_per_party, "Votes per party in 2016")
+#Plot 2 of data 2020 for votes per party
+plot2 <- plot_graph(data_2020_per_party, "Votes per party in 2020")
+#Arrange the 2 plots in one line
+grid.arrange(plot1, plot2, nrow = 1)
+```
+
+
+## Design decisions  
+
+- The labels of parties are different in 2016 in comparison to the 2020 dataset. These have been modified to be the same as that in the 2020 dataset. Example : Ind -> Independent
+- As the chart is color-coded, it is easy to compare the relative performance of parties in the elections. Those parties that have been renamed in 2020, have the same color codes which makes it easier to identify.
+- The grid lines are colored white to make it easier to read the horizontal axis which is indicative of the count of votes (FPV)
+- Co-ordinates are flipped to make comparison of parties easier and also to enhance clarity
+
+# The change in votes per party from 2016-2020  
+
+The FPV votes for the various parties between 2016 & 2020 elections are not the same. There is a need to make party-wise comparisons for the consecutive elections, this comparison is shown as a divergent bar graph in Figure 2.
+The **difference in the FPV gained by each party between the consecutive elections** is calculated and it is this value that is plotted in Figure 2
+
+
+```{r}
+#DATA CLEANING
+#Rename parties that have changed their names for 2020 general elections
+levels(data_2016_per_party$Party)[levels(data_2016_per_party$Party) == "Social Democratic Party"] <-
+  "Social Democrats"
+levels(data_2016_per_party$Party)[levels(data_2016_per_party$Party) == "AAA"] <-
+  "Solidarity–PBP"
+
+#Add year to each dataset - to differentiate the 2 datasets
+data_2016_per_party$year <- as.factor(2016)
+data_2020_per_party$year <- as.factor(2020)
+
+#Append the datasets to form a master dataset of (Party, votes_per_party, year)
+votes_per_party <- rbind(data_2016_per_party, data_2020_per_party)
+#To find the difference, make the data untidy
+untidy_data <-
+  votes_per_party %>% spread(key = year,
+                             value = votes_per_party,
+                             convert = FALSE)
+#Rename the columns to avoid .X and .Y
+colnames(untidy_data) <- c("Party", "Year2016", "Year2020")
+#If a value is not defined, set to 0 so that numerical subtraction results are correct
+untidy_data[is.na(untidy_data)] <- 0
+#Subtract the votes for the years 2020 and 2016 and subset only Party and diff_in_votes columns
+diff_per_party <-
+  untidy_data %>% mutate(diff_in_votes = Year2020 - Year2016) %>% select("Party", "diff_in_votes")
+
+```
+
+ 
+```{r,fig.cap="Change in vote per party from 2016 to 2020"}
+#Produce a plot which uses party as x-axis, diff_in_votes as y and fills by party for easily comparison
+ggplot(diff_per_party, aes(x = Party, y = diff_in_votes, fill = Party)) +
+  geom_col(position = "identity",
+           alpha = 0.85,
+           width = 0.7) +
+  scale_fill_manual(values = party.colours) +
+  scale_y_continuous(
+    breaks = seq(-15e3, 16e3, by = 2e3),
+    expand = c(0, 0),
+    labels = seq(-15e3, 16e3, by = 2e3),
+    name = "difference in votes per party"
+  ) +
+  theme(
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(angle = 60, hjust = 1),
+    plot.margin = margin(6, 6, 3, 3),
+    panel.background = element_blank(),
+    panel.grid.major.y = element_line(
+      size = 0.2,
+      linetype = 'solid',
+      colour = "white"
+    ),
+    panel.ontop = TRUE,
+    legend.position = "none"
+    
+  ) +
+  #Add a horizontal line at the origin to differentiate between positive and negative values
+  geom_hline(yintercept = 0,
+             size = 0.1,
+             colour = "grey")
+```
+
+## Design Decisions
+
+- The party labels are tilted to an angle of 60 deg to make them readable
+- The bar chart uses a politically sensitive color coding scheme
+- The ticks on the x-axis help the reader to connect the party name with the correct bar
+
+# A comparison to the national average for party share of the vote
+
+For the 2020 Irish general election, data was collected from www.irelandelection.com This was then loaded as a CSV to calculate the percentage of FPV secured by each party.
+This CSV contains 2 columns: Party name (Party) and the total number of FPV per party(total_votes)
+
+```{r}
+#Read the CSV of national averages for 2020
+data_average_2020 <-
+  read.csv("./GW-election2016-2020/National_Avg_2020.csv",
+           fileEncoding = "UTF-8-BOM")
+#Set the type to Ireland (as it is national average)
+data_average_2020$type <- "Ireland"
+#Calculate percentage of votes for each of the party for national average dataset
+data_average_2020$percentage <-
+  round(data_average_2020$total_votes * 100 / sum(data_average_2020$total_votes),
+        0)
+```
+
+```{r}
+#Calculate percentage of votes for each of the party for 2020 datset
+data_2020_per_party$percentage <-
+  round(
+    data_2020_per_party$votes_per_party * 100 / sum(data_2020_per_party$votes_per_party),
+    0
+  )
+#SEt the type to the Galway-west constituency
+data_2020_per_party$type <- "Galway-West"
+#Append both the datasets to form a master dataset of Party, type and Percentage
+national_avg_comp_2020 <-
+  rbind(data_average_2020[, c(1, 3, 4)], data_2020_per_party[, c(1, 4, 5)])
+```
+
+
+```{r, fig.cap="Comparison of national average to the constituency for party votes in 2020"}
+#CVD plot for 2020 national average comparison to the Galway-West votes per party
+ggplot(national_avg_comp_2020 , mapping = aes(x = percentage, y = Party)) +
+  geom_line(aes(group = Party), colour = "grey", size = 0.5) +
+  geom_point(aes(colour = type), size = 3, alpha = 0.7) +
+  #Set the x-axis scale
+  scale_x_continuous(
+    limits = c(0, 32),
+    expand = c(0, 0),
+    breaks = seq(0, 32, by = 2),
+    name = "Percentage  of FP votes "
+  ) +
+  #Set the theme
+  theme(
+    axis.title.y = element_blank(),
+    panel.grid.major.x = element_line(size = 0.03),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.line.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = c(0.85, 0.94),
+    legend.text = element_text(size = 7),
+    legend.key.size = unit(0.7, "lines"),
+    legend.title = element_blank()
+  ) +
+  #Add Okabi Ito colour palette
+  scale_color_OkabeIto(order = c(1, 5))
+```
+
+## Design decisions
+
+- The percentage of the FPV votes secured by each party is plotted on the horizontal axis  
+- The political party names are present on the vertical axis, this enhances the readability  
+- The points are color-coded in CVD using the **Okabi Ito** color palette to represent the Galway-west percentage and the national average percentage distinctly  
+- The 2 unique points for each of the parties are connected by a grey line to help illustrate the magnitude of their difference  
+- The major grid lines are used to help get the exact value of the share of the FPV for each point  
+- This plot not only showcases the difference in the votes between constituency and national average but also uses less ink. Hence, it is preferable to use dot plots for comparisons.
+
+# The change in votes for the most significant candidates in both elections
+
+In this report, the most significant candidates are those who contested both of the elections.
+Mairead Farell was a popular candidate who was elected with 8464 votes which was the second highest in the 2020 election. Hence she has also been included as a significant candidate.  
+
+Figure 5 displays the FPV vote count of the most significant candidates in both elections under comparison
+
+```{r}
+#CLEANING DATA
+#Some candidates have changes in their names and hence their names are converted to have the same spelling
+levels(cleaned_2016_data$Candidate)[levels(cleaned_2016_data$Candidate) ==
+                                      "Éamon O'Cuív"] <- "Éamon Ó Cuív"
+levels(cleaned_2016_data$Candidate)[levels(cleaned_2016_data$Candidate) ==
+                                      "Sean Kyne"] <- "Seán Kyne"
+levels(cleaned_2016_data$Candidate)[levels(cleaned_2016_data$Candidate) ==
+                                      "Catherine Martina Ann Connolly"] <- "Catherine Connolly"
+levels(cleaned_2016_data$Candidate)[levels(cleaned_2016_data$Candidate) ==
+                                      "Niall O' Tuathail"] <- "Niall Ó Tuathail"
+
+#Order the data by number of votes (FPV)
+cleaned_2016_data <-
+  cleaned_2016_data[order(-cleaned_2016_data$total_votes), ]
+cleaned_2020_data <-
+  cleaned_2020_data[order(-cleaned_2020_data$total_votes), ]
+
+#Get the candidates present in both elections
+candidates_compares <-
+  merge(cleaned_2016_data, cleaned_2020_data, by = "Candidate")$Candidate
+#Subset the significant candidates in 2016 data
+candidates_2016 <-
+  subset(
+    cleaned_2016_data,
+    Candidate %in% candidates_compares,
+    select = c(Candidate, total_votes)
+  )
+#Add Mairead as an extra significant candidate to the candidate list
+#Set the FPV of Mairead to 0 as she did not contest in the 2016 elections
+candidates_2016 <-
+  rbind(candidates_2016, as.data.frame(list(
+    Candidate = as.factor("Mairéad Farrell"),
+    total_votes = 0
+  )))
+#Set the year as 2016
+candidates_2016$year <- as.factor(2016)
+
+#Subset the significant candidates in 2016 data
+candidates_2020 <-
+  subset(
+    cleaned_2020_data,
+    Candidate %in% candidates_compares,
+    select = c(Candidate, total_votes)
+  )
+#Add Mairead as an extra significant candidate to the candidate list
+candidates_2020 <-
+  rbind(candidates_2020, cleaned_2020_data[cleaned_2020_data$Candidate ==
+                                             "Mairéad Farrell", c("Candidate", "total_votes")])
+#Set the year as 2020
+candidates_2020$year <- as.factor(2020)
+
+#Append the 2 candidates datasets from 2016 and 2020
+final_candidates_list <- rbind(candidates_2016, candidates_2020)
+```
+
+
+```{r, fig.cap="Change in vote for most significant candidates from 2016 to 2020"}
+#Plot of the significant candidates change in votes form 2016 to 2020
+ggplot(final_candidates_list , mapping = aes(x = total_votes, y = Candidate)) +
+  geom_line(aes(group = Candidate), colour = "grey", size = 0.5) +
+  geom_point(aes(colour = year), size = 3, alpha = 0.7) +
+  xlab("Number of FP votes") +
+  #Set theme
+  theme(
+    axis.title.y = element_blank(),
+    panel.grid.major.x = element_line(size = 0.03),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.line.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = c(0.84, 0.84),
+    legend.text = element_text(size = 7),
+    legend.key.size = unit(0.7, "lines"),
+    legend.title = element_blank()
+  ) +
+  #Viridis colour palette
+  scale_color_viridis_d()
+```
+
+## Design Decisions
+
+- The number of the FP(First Preferential) votes secured by each candidate is plotted on the horizontal axis  
+- The  names of the candidate are present on the vertical axis to enhance the readability  
+- The points are color-coded to represent the 2016 & 2020 general elections separately using the **Viridis** color palette.
+- The 2 unique points for each of the candidates are connected by a grey line to help point out the difference in votes that each candidate had in comparison between the years 2016 and 2020   
+- Mairead Farell, did not contest the 2016 election and hence her FPV in 2016 is set to 0
+
+
+# Conclusion
+- The major parties in both elections in Galway-West constituency can be identified as Fine Gael, Fine Faile, Sinn Fein    
+- Fine Fael and Fine Gael show a significant decrease in the number of votes they obtained in 2020 elections in comparison with 2016 elections  
+- Sinn Fein and Green Party show a significant increase in the number of votes they obtained in 2020 elections in comparison with 2016 elections  
+- Points that are close together for a party in Figure 3, show equivalent proportions of national average and constituency party share of votes  
+- Sinn Fein has a larger contribution nationally in comparison to Galway-West  
+- Independent parties have a larger contribution in Galway-West in comparison to Ireland  
+- Mairead has the largest change in vote as she did not contest in 2016 general elections  
+- Most of the candidates improved on the number of votes recieved in 2020 elections except for Sean Kyne and Eamon O Cuiv  
+
+# References
+- Lecture slides
+- GGPLOT2 Notes
+- https://www.rte.ie/news/election-2016/
+- https://www.rte.ie/news/election-2020/
+- https://en.wikipedia.org/wiki/2020_Irish_general_election
+- https://en.wikipedia.org/wiki/2016_Irish_general_election  
+
+
+# Appendix
+```{r eval=FALSE, echo=TRUE, ref.label=knitr::all_labels()}
+
+```
+
+
+
+```{r}
+total_seats <- sum(data_2016_per_party$votes_per_party)
+ggplot(data_2016_per_party, aes(x = "2020", y = votes_per_party, fill = Party))+
+  geom_col(width = 0.1) +
+  geom_text(aes(label = Party),
+            position = position_stack(vjust = 0.5), size=2.6, colour = "white") +
+  
+  scale_y_continuous(breaks = seq(0,160, by = 20), expand=c(0,0), sec.axis = sec_axis(~ ./ total_seats, labels = scales::percent,
+                                                                                      name = "Percentage"))+
+  scale_x_discrete( expand = c(0, 0))+
+  
+  
+  #theme_economist(base_size = 8) +
+  scale_fill_manual(values = party.colours)+
+  theme(legend.position = "None", 
+        legend.title = element_blank()) +
+  theme(axis.title.y = element_text(margin = margin(r = 10)),
+        axis.title.x = element_blank(),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.text.x =  element_blank(),
+        axis.ticks.x =  element_blank()) +
+  #theme(aspect.ratio = .2) +
+  ylab("Seats") +
+  xlab(NULL)
+
+```
